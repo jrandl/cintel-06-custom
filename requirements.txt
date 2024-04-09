@@ -1,1 +1,12 @@
-
+pandas
+pyarrow
+plotly
+seaborn
+shiny
+shinylive
+shinywidgets
+shinyswatch
+scipy
+shinywidgets
+plotly.express
+shiny.express
