@@ -18,14 +18,6 @@ from shinywidgets import render_plotly
 from scipy import stats
 from shinyswatch import theme
 
-
-
-# --------------------------------------------
-# Import icons as you like
-# --------------------------------------------
-
-# https://fontawesome.com/v4/cheatsheet/
-
 # --------------------------------------------
 # Shiny EXPRESS VERSION
 # --------------------------------------------
