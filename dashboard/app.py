@@ -63,9 +63,28 @@ def reactive_calc_combined():
     # Invalidate this calculation every UPDATE_INTERVAL_SECS to trigger updates
     reactive.invalidate_later(UPDATE_INTERVAL_SECS)
 
-    price = get_bitcoin_price()
+    # Get Price Based Off Of User Input
+    if str(input.crypto()) == "BTC":
+        price = get_bitcoin_price()
+
+    if str(input.crypto()) == "ETH":
+        price = get_ethereum_price()
+
+    if str(input.crypto()) == "DOGE":
+        price = get_dogecoin_price()
+
+    # Get Market Cap Based Off Of User Input
+    if str(input.crypto()) == "BTC":
+        market_cap = get_bitcoin_market_cap()
+
+    if str(input.crypto()) == "ETH":
+        market_cap = get_ethereum_market_cap()
+
+    if str(input.crypto()) == "DOGE":
+        market_cap = get_dogecoin_market_cap()
+    
+    
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    market_cap = get_bitcoin_market_cap()
     new_dictionary_entry = {"price":price, "timestamp":timestamp, "market_cap":market_cap}
 
     # get the deque and append the new entry
@@ -105,7 +124,7 @@ with ui.sidebar(open="open"):
     )
     ui.hr()
     ui.input_select(
-    "state",
+    "crypto",
     "Choose A Crypto:",
     {
         "Bitcoin Ecosystem": {"BTC": "Bitcoin"},
