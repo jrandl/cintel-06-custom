@@ -1,7 +1,9 @@
 # https://coinmarketcap.com/currencies/bitcoin/
 # shiny run --reload --launch-browser dashboard/app.py
 
-from bitcoin import get_bitcoin_price
+from bitcoin import get_bitcoin_price, get_bitcoin_market_cap
+from ethereum import get_ethereum_price, get_ethereum_market_cap
+from dogecoin import get_dogecoin_price, get_dogecoin_market_cap
 
 #print(get_bitcoin_price())
 
@@ -61,11 +63,10 @@ def reactive_calc_combined():
     # Invalidate this calculation every UPDATE_INTERVAL_SECS to trigger updates
     reactive.invalidate_later(UPDATE_INTERVAL_SECS)
 
-    # Data generation logic
-    #temp = round(random.uniform(-18, -16), 1)
-    temp = get_bitcoin_price()
+    price = get_bitcoin_price()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    new_dictionary_entry = {"temp":temp, "timestamp":timestamp}
+    market_cap = get_bitcoin_market_cap()
+    new_dictionary_entry = {"price":price, "timestamp":timestamp, "market_cap":market_cap}
 
     # get the deque and append the new entry
     reactive_value_wrapper.get().append(new_dictionary_entry)
@@ -103,10 +104,20 @@ with ui.sidebar(open="open"):
         class_="text-center",
     )
     ui.hr()
+    ui.input_select(
+    "state",
+    "Choose A Crypto:",
+    {
+        "Bitcoin Ecosystem": {"BTC": "Bitcoin"},
+        "Ethereum Ecosystem": {"ETH": "Ethereum"},
+        "Memes": {"DOGE": "Dogecoin"},
+    },
+)
+    
     ui.h6("Links:")
     ui.a(
         "Josiah's GitHub Source",
-        href="https://github.com/jrandl/cintel-05-cintel",
+        href="https://github.com/jrandl/cintel-06-custom",
         target="_blank",
     )
 
@@ -117,19 +128,24 @@ with ui.sidebar(open="open"):
 
 with ui.layout_columns():
     with ui.value_box(
-        #showcase=icon_svg("sun"),
         theme="bg-gradient-blue-purple",
     ):
-
         "Current Price"
-
         @render.text
-        def display_temp():
-            """Get the latest reading and return a temperature string"""
+        def display_price():
             deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
-            return f"{latest_dictionary_entry['temp']}"
+            return f"{latest_dictionary_entry['price']}"
 
-        ""
+    with ui.value_box(
+        theme="bg-gradient-blue-purple",  # Change the theme for market cap
+    ):
+        "Current Market Cap"
+        @render.text
+        def display_market_cap():
+            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+            return f"{latest_dictionary_entry['market_cap']}"
+
+        
 
 
 #with ui.card(full_screen=True, min_height="40%"):
