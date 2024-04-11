@@ -1,12 +1,11 @@
-shiny.express
-random
 datetime
-deque
 pandas
-plotly.express
+plotly
 shinywidgets
 scipy
 shinyswatch
 shinylive
 requests
-bs4
+beautifulsoup4
+shiny
+faicons
