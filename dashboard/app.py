@@ -1,11 +1,10 @@
 # https://coinmarketcap.com/currencies/bitcoin/
 # shiny run --reload --launch-browser dashboard/app.py
 
-from bitcoin import get_bitcoin_price, get_bitcoin_market_cap
-from ethereum import get_ethereum_price, get_ethereum_market_cap
-from dogecoin import get_dogecoin_price, get_dogecoin_market_cap
+from bitcoin import get_bitcoin_price, get_bitcoin_market_cap, get_bitcoin_price_float
+from ethereum import get_ethereum_price, get_ethereum_market_cap, get_ethereum_price_float
+from dogecoin import get_dogecoin_price, get_dogecoin_market_cap, get_dogecoin_price_float
 
-#print(get_bitcoin_price())
 
 # --------------------------------------------
 # Imports at the top - PyShiny EXPRESS VERSION
@@ -62,16 +61,19 @@ reactive_value_wrapper = reactive.value(deque(maxlen=DEQUE_SIZE))
 def reactive_calc_combined():
     # Invalidate this calculation every UPDATE_INTERVAL_SECS to trigger updates
     reactive.invalidate_later(UPDATE_INTERVAL_SECS)
-
+    float_value = 0
     # Get Price Based Off Of User Input
     if str(input.crypto()) == "BTC":
         price = get_bitcoin_price()
+        float_value = get_bitcoin_price_float()
 
     if str(input.crypto()) == "ETH":
         price = get_ethereum_price()
+        float_value = get_ethereum_price_float()
 
     if str(input.crypto()) == "DOGE":
         price = get_dogecoin_price()
+        float_value = get_dogecoin_price_float()
 
     # Get Market Cap Based Off Of User Input
     if str(input.crypto()) == "BTC":
@@ -85,7 +87,7 @@ def reactive_calc_combined():
     
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    new_dictionary_entry = {"price":price, "timestamp":timestamp, "market_cap":market_cap}
+    new_dictionary_entry = {"price":price, "timestamp":timestamp, "market_cap":market_cap, "float":float_value}
 
     # get the deque and append the new entry
     reactive_value_wrapper.get().append(new_dictionary_entry)
@@ -177,6 +179,35 @@ with ui.card(full_screen=True):
         deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
         pd.set_option('display.width', None)        # Use maximum width
         return render.DataGrid( df,width="100%")
+    
+with ui.card():
+    ui.card_header("Chart with Current Trend in Price")
+
+    @render_plotly
+    def display_plot():
+        # Fetch from the reactive calc function
+        deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+
+        # Ensure the DataFrame is not empty before plotting
+        if not df.empty:
+            # Convert the 'timestamp' column to datetime for better plotting
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+            # Create scatter plot for readings
+            # pass in the df, the name of the x column, the name of the y column,
+            # and more
+        
+            fig = px.scatter(df,
+            x="timestamp",
+            y="float",
+            title="Price Readings",
+            labels={"float": "Price", "timestamp": "Time"},
+            color_discrete_sequence=["blue"] )
+
+            # Update layout as needed to customize further
+            fig.update_layout(xaxis_title="Time",yaxis_title="Price")
+
+            return fig
             
 # Reactive observers for either dark mode or light mode
 @reactive.effect
