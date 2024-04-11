@@ -1,6 +1,11 @@
 # https://coinmarketcap.com/currencies/bitcoin/
 # shiny run --reload --launch-browser dashboard/app.py
 
+from bitcoin import get_bitcoin_price, get_bitcoin_market_cap, get_bitcoin_price_float
+from ethereum import get_ethereum_price, get_ethereum_market_cap, get_ethereum_price_float
+from dogecoin import get_dogecoin_price, get_dogecoin_market_cap, get_dogecoin_price_float
+
+
 # --------------------------------------------
 # Imports at the top - PyShiny EXPRESS VERSION
 # --------------------------------------------
@@ -19,9 +24,6 @@ import plotly.express as px
 from shinywidgets import render_plotly
 from scipy import stats
 from shinyswatch import theme
-
-import pyodide.http
-from bs4 import BeautifulSoup
 
 # --------------------------------------------
 # Shiny EXPRESS VERSION
@@ -54,49 +56,35 @@ reactive_value_wrapper = reactive.value(deque(maxlen=DEQUE_SIZE))
 # Very easy to expand or modify.
 # --------------------------------------------
 
-async def get_bitcoin_price():
-    url = "https://coinmarketcap.com/currencies/bitcoin/"
-    response = await pyodide.http.pyfetch(url)
-    if response.status != 200:
-        raise Exception(f"Error fetching {url}: {response.status}")
-    soup = BeautifulSoup(await response.string(), 'html.parser')
-    price = soup.find('span', class_='sc-f70bb44c-0 jxpCgO base-text').text
-    return price
-
-async def get_bitcoin_market_cap():
-    url = "https://coinmarketcap.com/currencies/bitcoin/"
-    response = await pyodide.http.pyfetch(url)
-    if response.status != 200:
-        raise Exception(f"Error fetching {url}: {response.status}")
-    soup = BeautifulSoup(await response.string(), 'html.parser')
-    market_cap = soup.find('dd', class_='sc-f70bb44c-0 bCgkcs base-text').text
-    market_cap = market_cap.split('$')[-1]  # Split by '$' and get the last part
-    return '$' + market_cap  # Add '$' back to the beginning
-
-async def get_bitcoin_price_float():
-    url = "https://coinmarketcap.com/currencies/bitcoin/"
-    response = await pyodide.http.pyfetch(url)
-    if response.status != 200:
-        raise Exception(f"Error fetching {url}: {response.status}")
-    soup = BeautifulSoup(await response.string(), 'html.parser')
-    price = soup.find('span', class_='sc-f70bb44c-0 jxpCgO base-text').text
-    price = price.replace('$', '').replace(',', '')
-    return float(price)
-
-
-
 
 @reactive.calc()
-async def reactive_calc_combined():
+def reactive_calc_combined():
     # Invalidate this calculation every UPDATE_INTERVAL_SECS to trigger updates
     reactive.invalidate_later(UPDATE_INTERVAL_SECS)
     float_value = 0
     # Get Price Based Off Of User Input
     if str(input.crypto()) == "BTC":
-        price = await get_bitcoin_price()
-        float_value = await get_bitcoin_price_float()
-        market_cap = await get_bitcoin_market_cap()
+        price = get_bitcoin_price()
+        float_value = get_bitcoin_price_float()
 
+    if str(input.crypto()) == "ETH":
+        price = get_ethereum_price()
+        float_value = get_ethereum_price_float()
+
+    if str(input.crypto()) == "DOGE":
+        price = get_dogecoin_price()
+        float_value = get_dogecoin_price_float()
+
+    # Get Market Cap Based Off Of User Input
+    if str(input.crypto()) == "BTC":
+        market_cap = get_bitcoin_market_cap()
+
+    if str(input.crypto()) == "ETH":
+        market_cap = get_ethereum_market_cap()
+
+    if str(input.crypto()) == "DOGE":
+        market_cap = get_dogecoin_market_cap()
+    
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     new_dictionary_entry = {"price":price, "timestamp":timestamp, "market_cap":market_cap, "float":float_value}
@@ -165,8 +153,8 @@ with ui.layout_columns():
     ):
         "Current Price"
         @render.text
-        async def display_price():
-            deque_snapshot, df, latest_dictionary_entry = await reactive_calc_combined()
+        def display_price():
+            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
             return f"{latest_dictionary_entry['price']}"
 
     with ui.value_box(
@@ -174,8 +162,8 @@ with ui.layout_columns():
     ):
         "Current Market Cap"
         @render.text
-        async def display_market_cap():
-            deque_snapshot, df, latest_dictionary_entry = await reactive_calc_combined()
+        def display_market_cap():
+            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
             return f"{latest_dictionary_entry['market_cap']}"
 
         
@@ -186,9 +174,9 @@ with ui.card(full_screen=True):
     ui.card_header("Most Recent Prices")
 
     @render.data_frame
-    async def display_df():
+    def display_df():
         """Get the latest reading and return a dataframe with current readings"""
-        deque_snapshot, df, latest_dictionary_entry = await reactive_calc_combined()
+        deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
         pd.set_option('display.width', None)        # Use maximum width
         return render.DataGrid( df,width="100%")
     
@@ -196,9 +184,9 @@ with ui.card():
     ui.card_header("Chart with Current Trend in Price")
 
     @render_plotly
-    async def display_plot():
+    def display_plot():
         # Fetch from the reactive calc function
-        deque_snapshot, df, latest_dictionary_entry = await reactive_calc_combined()
+        deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
 
         # Ensure the DataFrame is not empty before plotting
         if not df.empty:
