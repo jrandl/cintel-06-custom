@@ -20,6 +20,9 @@ from shinywidgets import render_plotly
 from scipy import stats
 from shinyswatch import theme
 
+import pyodide.http
+from bs4 import BeautifulSoup
+
 # --------------------------------------------
 # Shiny EXPRESS VERSION
 # --------------------------------------------
@@ -30,7 +33,7 @@ from shinyswatch import theme
 # Use a type hint to make it clear that it's an integer (: int)
 # --------------------------------------------
 
-UPDATE_INTERVAL_SECS: int = 1
+UPDATE_INTERVAL_SECS: int = 10
 
 # --------------------------------------------
 # Initialize a REACTIVE VALUE with a common data structure
@@ -50,120 +53,53 @@ reactive_value_wrapper = reactive.value(deque(maxlen=DEQUE_SIZE))
 # It returns a tuple with everything needed to display the data.
 # Very easy to expand or modify.
 # --------------------------------------------
-global bitcoin1
-bitcoin1 = 0
 
-global bitcoin2
-bitcoin2 = 0
+async def get_bitcoin_price():
+    url = "https://coinmarketcap.com/currencies/bitcoin/"
+    response = await pyodide.http.pyfetch(url)
+    if response.status != 200:
+        raise Exception(f"Error fetching {url}: {response.status}")
+    soup = BeautifulSoup(await response.string(), 'html.parser')
+    price = soup.find('span', class_='sc-f70bb44c-0 jxpCgO base-text').text
+    return price
 
-global bitcoin3
-bitcoin3 = 0
+async def get_bitcoin_market_cap():
+    url = "https://coinmarketcap.com/currencies/bitcoin/"
+    response = await pyodide.http.pyfetch(url)
+    if response.status != 200:
+        raise Exception(f"Error fetching {url}: {response.status}")
+    soup = BeautifulSoup(await response.string(), 'html.parser')
+    market_cap = soup.find('dd', class_='sc-f70bb44c-0 bCgkcs base-text').text
+    market_cap = market_cap.split('$')[-1]  # Split by '$' and get the last part
+    return '$' + market_cap  # Add '$' back to the beginning
 
-global ethcoin1
-ethcoin1 = 0
+async def get_bitcoin_price_float():
+    url = "https://coinmarketcap.com/currencies/bitcoin/"
+    response = await pyodide.http.pyfetch(url)
+    if response.status != 200:
+        raise Exception(f"Error fetching {url}: {response.status}")
+    soup = BeautifulSoup(await response.string(), 'html.parser')
+    price = soup.find('span', class_='sc-f70bb44c-0 jxpCgO base-text').text
+    price = price.replace('$', '').replace(',', '')
+    return float(price)
 
-global ethcoin2
-ethcoin2 = 0
 
-global ethcoin3
-ethcoin3 = 0
 
-global dogecoin1
-dogecoin1 = 0
-
-global dogecoin2
-dogecoin2 = 0
-
-global dogecoin3
-dogecoin3 = 0
-
-def get_bitcoin_price():
-    global bitcoin1
-    df = pd.read_csv("dashboard/BTC-USD.csv")
-    latest_price = df['Close'].iloc[bitcoin1 % len(df)]  # Use modulo to wrap around
-    bitcoin1 += 1
-    return f"${latest_price:,.2f}"
-
-def get_bitcoin_price_float():
-    global bitcoin2
-    df = pd.read_csv("dashboard/BTC-USD.csv")
-    value_float = df['Close'].iloc[bitcoin2 % len(df)]  # Use modulo to wrap around
-    bitcoin2 += 1
-    return value_float
-
-def get_bitcoin_volume():
-    global bitcoin3
-    df = pd.read_csv("dashboard/BTC-USD.csv")
-    latest_price = df['Volume'].iloc[bitcoin3 % len(df)]  # Use modulo to wrap around
-    bitcoin3 += 1
-    return f"${latest_price:,.2f}"
-
-def get_ethereum_price():
-    global ethcoin1
-    df = pd.read_csv("dashboard/ETH-USD.csv")
-    latest_price = df['Close'].iloc[ethcoin1 % len(df)]  # Use modulo to wrap around
-    ethcoin1 += 1
-    return f"${latest_price:,.2f}"
-
-def get_ethereum_price_float():
-    global ethcoin2
-    df = pd.read_csv("dashboard/ETH-USD.csv")
-    value_float = df['Close'].iloc[ethcoin2 % len(df)]  # Use modulo to wrap around
-    ethcoin2 += 1
-    return value_float
-
-def get_ethereum_volume():
-    global ethcoin3
-    df = pd.read_csv("dashboard/ETH-USD.csv")
-    latest_price = df['Volume'].iloc[ethcoin3 % len(df)]  # Use modulo to wrap around
-    ethcoin3 += 1
-    return f"${latest_price:,.2f}"
-
-def get_dogecoin_price():
-    global dogecoin1
-    df = pd.read_csv("dashboard/DOGE-USD.csv")
-    latest_price = df['Close'].iloc[dogecoin1 % len(df)]  # Use modulo to wrap around
-    dogecoin1 += 1
-    return f"${latest_price:,.2f}"
-
-def get_dogecoin_price_float():
-    global dogecoin2
-    df = pd.read_csv("dashboard/DOGE-USD.csv")
-    value_float = df['Close'].iloc[dogecoin2 % len(df)]  # Use modulo to wrap around
-    dogecoin2 += 1
-    return value_float
-
-def get_dogecoin_volume():
-    global dogecoin3
-    df = pd.read_csv("dashboard/DOGE-USD.csv")
-    latest_price = df['Volume'].iloc[dogecoin3 % len(df)]  # Use modulo to wrap around
-    dogecoin3 += 1
-    return f"${latest_price:,.2f}"
 
 @reactive.calc()
-def reactive_calc_combined():
+async def reactive_calc_combined():
     # Invalidate this calculation every UPDATE_INTERVAL_SECS to trigger updates
     reactive.invalidate_later(UPDATE_INTERVAL_SECS)
     float_value = 0
     # Get Price Based Off Of User Input
     if str(input.crypto()) == "BTC":
-        price = get_bitcoin_price()
-        float_value = get_bitcoin_price_float()
-        volume = get_bitcoin_volume()
-
-    if str(input.crypto()) == "ETH":
-        price = get_ethereum_price()
-        float_value = get_ethereum_price_float()
-        volume = get_ethereum_volume()
-
-    if str(input.crypto()) == "DOGE":
-        price = get_dogecoin_price()
-        float_value = get_dogecoin_price_float()
-        volume = get_dogecoin_volume()
+        price = await get_bitcoin_price()
+        float_value = await get_bitcoin_price_float()
+        market_cap = await get_bitcoin_market_cap()
 
     
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    new_dictionary_entry = {"price":price, "timestamp":timestamp, "volume":volume, "float":float_value}
+    new_dictionary_entry = {"price":price, "timestamp":timestamp, "market_cap":market_cap, "float":float_value}
 
     # get the deque and append the new entry
     reactive_value_wrapper.get().append(new_dictionary_entry)
@@ -197,7 +133,7 @@ with ui.sidebar(open="open"):
 
     ui.h2("Crypto Dashboard", class_="text-center")
     ui.p(
-        "A dashboard showing the daily prices of cryptocurrency over the past month",
+        "A dashboard showing the current prices of cryptocurrency",
         class_="text-center",
     )
     ui.hr()
@@ -227,20 +163,20 @@ with ui.layout_columns():
     with ui.value_box(
         theme="bg-gradient-blue-purple",
     ):
-        "Daily Price"
+        "Current Price"
         @render.text
-        def display_price():
-            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+        async def display_price():
+            deque_snapshot, df, latest_dictionary_entry = await reactive_calc_combined()
             return f"{latest_dictionary_entry['price']}"
 
     with ui.value_box(
         theme="bg-gradient-blue-purple",  # Change the theme for market cap
     ):
-        "Daily Volume"
+        "Current Market Cap"
         @render.text
-        def display_volume():
-            deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
-            return f"{latest_dictionary_entry['volume']}"
+        async def display_market_cap():
+            deque_snapshot, df, latest_dictionary_entry = await reactive_calc_combined()
+            return f"{latest_dictionary_entry['market_cap']}"
 
         
 
@@ -250,19 +186,19 @@ with ui.card(full_screen=True):
     ui.card_header("Most Recent Prices")
 
     @render.data_frame
-    def display_df():
+    async def display_df():
         """Get the latest reading and return a dataframe with current readings"""
-        deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+        deque_snapshot, df, latest_dictionary_entry = await reactive_calc_combined()
         pd.set_option('display.width', None)        # Use maximum width
         return render.DataGrid( df,width="100%")
     
 with ui.card():
-    ui.card_header("Chart with Daily Trend in Price Over Past Month")
+    ui.card_header("Chart with Current Trend in Price")
 
     @render_plotly
-    def display_plot():
+    async def display_plot():
         # Fetch from the reactive calc function
-        deque_snapshot, df, latest_dictionary_entry = reactive_calc_combined()
+        deque_snapshot, df, latest_dictionary_entry = await reactive_calc_combined()
 
         # Ensure the DataFrame is not empty before plotting
         if not df.empty:
